@@ -4,11 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
-import type { Usuario } from "@/components/types/usuario";
-
-const USUARIOS: Usuario[] = [
-  { id: 1, nome: "Felipe Admin", email: "gestor@taskflow.com", senha: "123", role: "gestor" },
-];
+import { USUARIOS_COM_ACESSO } from "@/lib/usuarios-sistema";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +14,9 @@ export default function LoginPage() {
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const usuario = USUARIOS.find(u => u.email === email && u.senha === senha);
+    const usuario = USUARIOS_COM_ACESSO.find(
+      (u) => u.email === email && u.senha === senha,
+    );
     if (usuario) {
       sessionStorage.setItem("usuario", JSON.stringify(usuario));
       router.push("/dashboard");
@@ -46,9 +44,10 @@ export default function LoginPage() {
           <Button type="submit">Entrar</Button>
         </form>
 
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Login: gestor@taskflow.com / 123
-        </p>
+        <div className="text-center text-xs text-gray-400 mt-4 space-y-1">
+          <p>Gestor: gestor@taskflow.com / 123</p>
+          <p>Funcionário: manu@taskflow.com / 123</p>
+        </div>
       </div>
     </main>
   );

@@ -7,73 +7,84 @@ import {
   useEffect,
   useState,
 } from "react";
-import type { Demanda } from "@/lib/demandas";
-import { prazoDeInputDate } from "@/lib/demandas";
-
-const STORAGE_KEY = "taskflow-demandas-v2";
-
-export type NovaDemandaInput = {
-  titulo: string;
-  descricao: string;
-  responsavel: string;
-  prioridade: Demanda["prioridade"];
-  prazoISO: string;
-};
+import { toast } from "sonner";
+import {
+  listarDemandas,
+  criarDemanda,
+  atualizarStatusDemanda as atualizarStatusDemandaApi,
+  excluirDemanda as excluirDemandaApi,
+} from "@/lib/api/demandas-api";
+import type { NovaDemandaFormValues } from "@/schemas/nova-demanda";
+import type { Demanda } from "@/types/demanda";
 
 type DemandasContextValue = {
   demandas: Demanda[];
-  adicionarDemanda: (input: NovaDemandaInput) => void;
+  carregando: boolean;
+  adicionarDemanda: (input: NovaDemandaFormValues) => Promise<void>;
+  atualizarStatusDemanda: (
+    id: number,
+    status: Demanda["status"],
+  ) => Promise<Demanda>;
+  excluirDemanda: (id: number) => Promise<void>;
 };
 
 const DemandasContext = createContext<DemandasContextValue | null>(null);
 
-function parseArmazenado(): Demanda[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed as Demanda[];
-  } catch {
-    return [];
-  }
-}
-
 export function DemandasProvider({ children }: { children: React.ReactNode }) {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    setDemandas(parseArmazenado());
-    setHydrated(true);
+    let ativo = true;
+    listarDemandas()
+      .then((lista) => {
+        if (ativo) setDemandas(lista);
+      })
+      .catch(() => {
+        toast.error("Não foi possível carregar as demandas.");
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+    return () => {
+      ativo = false;
+    };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(demandas));
-  }, [demandas, hydrated]);
+  const adicionarDemanda = useCallback(
+    async (input: NovaDemandaFormValues) => {
+      const nova = await criarDemanda(input);
+      setDemandas((prev) => [...prev, nova]);
+    },
+    [],
+  );
 
-  const adicionarDemanda = useCallback((input: NovaDemandaInput) => {
-    setDemandas((prev) => {
-      const ids = prev.map((d) => d.id);
-      const id = ids.length === 0 ? 1 : Math.max(...ids) + 1;
-      const desc = input.descricao.trim();
-      const nova: Demanda = {
-        id,
-        titulo: input.titulo.trim(),
-        ...(desc ? { descricao: desc } : {}),
-        responsavel: input.responsavel.trim(),
-        prioridade: input.prioridade,
-        status: "Pendente",
-        prazo: prazoDeInputDate(input.prazoISO),
-      };
-      return [...prev, nova];
-    });
+  const atualizarStatusDemanda = useCallback(
+    async (id: number, status: Demanda["status"]) => {
+      const atualizada = await atualizarStatusDemandaApi(id, status);
+      setDemandas((prev) =>
+        prev.map((d) => (d.id === id ? atualizada : d)),
+      );
+      return atualizada;
+    },
+    [],
+  );
+
+  const excluirDemanda = useCallback(async (id: number) => {
+    await excluirDemandaApi(id);
+    setDemandas((prev) => prev.filter((d) => d.id !== id));
   }, []);
 
   return (
-    <DemandasContext.Provider value={{ demandas, adicionarDemanda }}>
+    <DemandasContext.Provider
+      value={{
+        demandas,
+        carregando,
+        adicionarDemanda,
+        atualizarStatusDemanda,
+        excluirDemanda,
+      }}
+    >
       {children}
     </DemandasContext.Provider>
   );

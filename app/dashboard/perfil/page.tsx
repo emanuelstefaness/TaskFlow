@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Usuario } from "@/components/types/usuario";
+import type { Usuario } from "@/types/usuario";
 
 export default function PerfilPage() {
   const router = useRouter();

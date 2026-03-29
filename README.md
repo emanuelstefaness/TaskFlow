@@ -1,26 +1,30 @@
 # TaskFlow
 
-Next.js + Tailwind.
+Painel de demandas (Next.js + Tailwind). Dados no navegador (`localStorage`), sem backend.
 
-## O que o sistema faz
-
-É um painel para **organizar demandas de trabalho**: você entra com login (modo demonstração), vê um resumo em cards e uma lista, e o gestor pode **criar demandas** com título, descrição opcional, **quem vai fazer**, prioridade e prazo. Cada demanda aparece na lista geral; na área **Demandas** só entram as que foram **atribuídas ao seu usuário**. Tudo fica guardado no **navegador** (`localStorage`) — não há servidor nem banco de dados.
-
-## Subir
+## Rodar
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Login de teste
+Abre em http://localhost:3000
 
-`gestor@taskflow.com` / `123` (definido em `app/page.tsx`).
+## Login (teste)
 
-## Telas
+Arquivo: `lib/usuarios-sistema.ts`
 
-**Dashboard** — todas as demandas; gestor cria nova aqui.  
-**Demandas** — só as que estão com o seu nome como responsável.  
-**Perfil** — sair da conta.
+| | E-mail | Senha |
+|---|--------|-------|
+| Gestor | gestor@taskflow.com | 123 |
+| Funcionário | manu@taskflow.com | 123 |
 
-Nomes para atribuir demanda: `lib/responsaveis.ts`.
+## Onde clicar
+
+- **Dashboard** — lista geral; gestor cria demanda.  
+- **Demandas** — só as com o seu nome.  
+- **Funcionários** — só gestor; quem tem login de funcionário.  
+- **Perfil** — sair.
+
+

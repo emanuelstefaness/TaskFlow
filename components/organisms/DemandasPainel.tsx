@@ -2,12 +2,28 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/atoms/Button";
-import type { Usuario } from "@/components/types/usuario";
+import { NovaDemandaForm } from "@/components/molecules/NovaDemandaForm";
+import type { Usuario } from "@/types/usuario";
 import { useDemandas } from "@/context/DemandasContext";
-import type { Demanda } from "@/lib/demandas";
-import { corPrioridade, corStatus } from "@/lib/demandas";
-import { RESPONSAVEIS_OPCOES } from "@/lib/responsaveis";
+import type { NovaDemandaFormValues } from "@/schemas/nova-demanda";
+import type { Demanda } from "@/types/demanda";
+import { corPrioridade, corStatus } from "@/lib/demandas-utils";
+
+const STATUS_OPCOES: Demanda["status"][] = [
+  "Pendente",
+  "Em andamento",
+  "Concluída",
+];
+
+/** Gestor: qualquer demanda. Funcionário: só a que está com o nome dele. */
+function podeGestorOuResponsavel(usuario: Usuario, d: Demanda): boolean {
+  if (usuario.role === "gestor") return true;
+  return (
+    d.responsavel.trim().toLowerCase() === usuario.nome.trim().toLowerCase()
+  );
+}
 
 interface DemandasPainelProps {
   usuario: Usuario;
@@ -30,56 +46,61 @@ export function DemandasPainel({
   mostrarNovaDemanda = false,
   mensagemVazia = "Nenhuma demanda nesta lista.",
 }: DemandasPainelProps) {
-  const { adicionarDemanda } = useDemandas();
+  const {
+    adicionarDemanda,
+    carregando,
+    atualizarStatusDemanda,
+    excluirDemanda,
+  } = useDemandas();
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState<string>("Todos");
   const [novaDemandaAberta, setNovaDemandaAberta] = useState(false);
-
-  const [formTitulo, setFormTitulo] = useState("");
-  const [formDescricao, setFormDescricao] = useState("");
-  const [formResponsavel, setFormResponsavel] = useState("");
-  const [formPrioridade, setFormPrioridade] =
-    useState<Demanda["prioridade"]>("Média");
-  const [formPrazo, setFormPrazo] = useState("");
-  const [erroTitulo, setErroTitulo] = useState(false);
-  const [erroResponsavel, setErroResponsavel] = useState(false);
-  const [erroPrazo, setErroPrazo] = useState(false);
+  const [enviandoDemanda, setEnviandoDemanda] = useState(false);
+  const [demandaVisualizar, setDemandaVisualizar] = useState<Demanda | null>(
+    null,
+  );
+  const [salvandoStatus, setSalvandoStatus] = useState(false);
+  const [excluindoId, setExcluindoId] = useState<number | null>(null);
 
   function fecharModal() {
     setNovaDemandaAberta(false);
-    setFormTitulo("");
-    setFormDescricao("");
-    setFormResponsavel("");
-    setFormPrioridade("Média");
-    setFormPrazo("");
-    setErroTitulo(false);
-    setErroResponsavel(false);
-    setErroPrazo(false);
   }
 
   function abrirModal() {
-    fecharModal();
     setNovaDemandaAberta(true);
   }
 
-  function handleCriarDemanda(e: React.FormEvent) {
-    e.preventDefault();
-    const semTitulo = !formTitulo.trim();
-    const semResp = !formResponsavel.trim();
-    const semPrazo = !formPrazo.trim();
-    setErroTitulo(semTitulo);
-    setErroResponsavel(semResp);
-    setErroPrazo(semPrazo);
-    if (semTitulo || semResp || semPrazo) return;
+  async function handleExcluirDemanda(d: Demanda) {
+    if (
+      !window.confirm(
+        `Excluir a demanda "${d.titulo}"? Não dá para desfazer.`,
+      )
+    ) {
+      return;
+    }
+    setExcluindoId(d.id);
+    try {
+      await excluirDemanda(d.id);
+      toast.success("Demanda excluída.");
+      setDemandaVisualizar((cur) => (cur?.id === d.id ? null : cur));
+    } catch {
+      toast.error("Não foi possível excluir a demanda.");
+    } finally {
+      setExcluindoId(null);
+    }
+  }
 
-    adicionarDemanda({
-      titulo: formTitulo,
-      descricao: formDescricao,
-      responsavel: formResponsavel,
-      prioridade: formPrioridade,
-      prazoISO: formPrazo,
-    });
-    fecharModal();
+  async function handleCriarDemanda(data: NovaDemandaFormValues) {
+    setEnviandoDemanda(true);
+    try {
+      await adicionarDemanda(data);
+      toast.success("Demanda criada e salva.");
+      fecharModal();
+    } catch {
+      toast.error("Não foi possível criar a demanda. Tente de novo.");
+    } finally {
+      setEnviandoDemanda(false);
+    }
   }
 
   const filtradas = useMemo(() => {
@@ -93,19 +114,36 @@ export function DemandasPainel({
     });
   }, [demandas, busca, statusFiltro]);
 
+  const emAberto = useMemo(
+    () => filtradas.filter((d) => d.status !== "Concluída"),
+    [filtradas],
+  );
+  const concluidasLista = useMemo(
+    () => filtradas.filter((d) => d.status === "Concluída"),
+    [filtradas],
+  );
+
   const total = filtradas.length;
   const pendentes = filtradas.filter((d) => d.status === "Pendente").length;
   const andamento = filtradas.filter((d) => d.status === "Em andamento").length;
-  const concluidas = filtradas.filter((d) => d.status === "Concluída").length;
+  const concluidas = concluidasLista.length;
+
+  if (carregando) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-500">
+        Carregando demandas…
+      </div>
+    );
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">{titulo}</h1>
       <p className="text-gray-400 mb-6">{subtitulo}</p>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-600 text-white rounded-xl p-4">
-          <p className="text-sm opacity-80">Total</p>
+          <p className="text-sm opacity-80">Total (no filtro)</p>
           <p className="text-3xl font-bold mt-1">{total}</p>
         </div>
         <div className="bg-orange-400 text-white rounded-xl p-4">
@@ -122,22 +160,22 @@ export function DemandasPainel({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por título"
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
           value={statusFiltro}
           onChange={(e) => setStatusFiltro(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none w-full sm:w-auto"
         >
-          <option>Todos</option>
-          <option>Pendente</option>
-          <option>Em andamento</option>
-          <option>Concluída</option>
+          <option value="Todos">Todos (em aberto + concluídas)</option>
+          <option value="Pendente">Pendente</option>
+          <option value="Em andamento">Em andamento</option>
+          <option value="Concluída">Só concluídas</option>
         </select>
         {mostrarNovaDemanda && usuario.role === "gestor" && (
           <Button type="button" onClick={abrirModal}>
@@ -147,15 +185,20 @@ export function DemandasPainel({
       </div>
 
       <div className="bg-white rounded-xl shadow">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">{tituloTabela}</h2>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-gray-800">{tituloTabela}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Pendente e em andamento (concluídas ficam abaixo)
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => {
               setBusca("");
               setStatusFiltro("Todos");
             }}
-            className="text-sm text-gray-400 hover:text-gray-600"
+            className="text-sm text-gray-400 hover:text-gray-600 shrink-0"
           >
             Limpar
           </button>
@@ -164,12 +207,12 @@ export function DemandasPainel({
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="text-left text-sm text-gray-400 border-b border-gray-100">
-                <th className="px-6 py-3 font-medium">Título</th>
-                <th className="px-6 py-3 font-medium">Responsável</th>
-                <th className="px-6 py-3 font-medium">Prioridade</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Prazo</th>
-                <th className="px-6 py-3 font-medium"></th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Título</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Responsável</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Prioridade</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Status</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Prazo</th>
+                <th className="px-4 sm:px-6 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -182,37 +225,66 @@ export function DemandasPainel({
                     {mensagemVazia}
                   </td>
                 </tr>
+              ) : emAberto.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-sm text-gray-500"
+                  >
+                    {statusFiltro === "Concluída"
+                      ? "Nenhuma em aberto — use o filtro ou veja a seção Concluídas abaixo."
+                      : "Nenhuma demanda em aberto com este filtro. Concluídas estão na seção abaixo."}
+                  </td>
+                </tr>
               ) : (
-                filtradas.map((d) => (
+                emAberto.map((d) => (
                   <tr
                     key={d.id}
                     className="border-b border-gray-50 hover:bg-gray-50"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-800">
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-800">
                       {d.titulo}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600">
                       {d.responsavel}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`text-white text-xs px-3 py-1 rounded-full ${corPrioridade[d.prioridade]}`}
                       >
                         {d.prioridade}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`text-white text-xs px-3 py-1 rounded-full ${corStatus[d.status]}`}
                       >
                         {d.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600">
                       {d.prazo}
                     </td>
-                    <td className="px-6 py-4 text-sm text-blue-600 cursor-pointer hover:underline">
-                      Ver
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setDemandaVisualizar(d)}
+                          className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          Ver
+                        </button>
+                        {podeGestorOuResponsavel(usuario, d) && (
+                          <button
+                            type="button"
+                            disabled={excluindoId === d.id}
+                            onClick={() => void handleExcluirDemanda(d)}
+                            className="text-sm text-red-600 hover:underline font-medium disabled:opacity-50"
+                          >
+                            {excluindoId === d.id ? "…" : "Excluir"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -221,7 +293,7 @@ export function DemandasPainel({
           </table>
         </div>
         {rodape && (
-          <div className="px-6 py-3 text-right">
+          <div className="px-6 py-3 text-right border-t border-gray-50">
             <Link
               href={rodape.href}
               className="text-sm text-blue-600 hover:underline"
@@ -232,17 +304,232 @@ export function DemandasPainel({
         )}
       </div>
 
-      {novaDemandaAberta && (
+      <div className="bg-white rounded-xl shadow mt-6">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800">Concluídas</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Demandas finalizadas saem da lista acima e ficam aqui. O responsável
+            (ou o gestor) pode reabrir mudando o status em Ver.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
+            <thead>
+              <tr className="text-left text-sm text-gray-400 border-b border-gray-100">
+                <th className="px-4 sm:px-6 py-3 font-medium">Título</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Responsável</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Prioridade</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Status</th>
+                <th className="px-4 sm:px-6 py-3 font-medium">Prazo</th>
+                <th className="px-4 sm:px-6 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {concluidasLista.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-sm text-gray-500"
+                  >
+                    Nenhuma demanda concluída neste filtro.
+                  </td>
+                </tr>
+              ) : (
+                concluidasLista.map((d) => (
+                  <tr
+                    key={d.id}
+                    className="border-b border-gray-50 hover:bg-gray-50 bg-green-50/30"
+                  >
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-800">
+                      {d.titulo}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600">
+                      {d.responsavel}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <span
+                        className={`text-white text-xs px-3 py-1 rounded-full ${corPrioridade[d.prioridade]}`}
+                      >
+                        {d.prioridade}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <span
+                        className={`text-white text-xs px-3 py-1 rounded-full ${corStatus[d.status]}`}
+                      >
+                        {d.status}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600">
+                      {d.prazo}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setDemandaVisualizar(d)}
+                          className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          Ver
+                        </button>
+                        {podeGestorOuResponsavel(usuario, d) && (
+                          <button
+                            type="button"
+                            disabled={excluindoId === d.id}
+                            onClick={() => void handleExcluirDemanda(d)}
+                            className="text-sm text-red-600 hover:underline font-medium disabled:opacity-50"
+                          >
+                            {excluindoId === d.id ? "…" : "Excluir"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {demandaVisualizar && (
         <div
-          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 overflow-y-auto"
           role="presentation"
           onClick={(ev) => {
-            if (ev.target === ev.currentTarget) fecharModal();
+            if (ev.target === ev.currentTarget) setDemandaVisualizar(null);
           }}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg"
+            className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-lg my-auto"
             role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalhe-demanda-titulo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="detalhe-demanda-titulo"
+              className="text-lg font-bold text-gray-800 mb-1"
+            >
+              {demandaVisualizar.titulo}
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              Demanda #{demandaVisualizar.id}
+            </p>
+            <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="text-gray-500 font-medium">Descrição</dt>
+                <dd className="text-gray-800 mt-0.5 whitespace-pre-wrap">
+                  {demandaVisualizar.descricao?.trim() || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 font-medium">Responsável</dt>
+                <dd className="text-gray-800 mt-0.5">
+                  {demandaVisualizar.responsavel}
+                </dd>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <div>
+                  <dt className="text-gray-500 font-medium">Prioridade</dt>
+                  <dd className="mt-1">
+                    <span
+                      className={`text-white text-xs px-3 py-1 rounded-full inline-block ${corPrioridade[demandaVisualizar.prioridade]}`}
+                    >
+                      {demandaVisualizar.prioridade}
+                    </span>
+                  </dd>
+                </div>
+                <div className="min-w-[12rem]">
+                  <dt className="text-gray-500 font-medium">Status</dt>
+                  <dd className="mt-1">
+                    {podeGestorOuResponsavel(usuario, demandaVisualizar) ? (
+                      <div>
+                        <select
+                          value={demandaVisualizar.status}
+                          disabled={salvandoStatus}
+                          onChange={async (e) => {
+                            const novo = e.target
+                              .value as Demanda["status"];
+                            if (novo === demandaVisualizar.status) return;
+                            setSalvandoStatus(true);
+                            try {
+                              const d = await atualizarStatusDemanda(
+                                demandaVisualizar.id,
+                                novo,
+                              );
+                              setDemandaVisualizar(d);
+                              toast.success("Status atualizado.");
+                            } catch {
+                              toast.error(
+                                "Não foi possível atualizar o status.",
+                              );
+                            } finally {
+                              setSalvandoStatus(false);
+                            }
+                          }}
+                          className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                        >
+                          {STATUS_OPCOES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Você pode mudar o status a qualquer momento, inclusive
+                          depois de concluir (para reabrir, escolha Pendente ou
+                          Em andamento).
+                        </p>
+                      </div>
+                    ) : (
+                      <span
+                        className={`text-white text-xs px-3 py-1 rounded-full inline-block ${corStatus[demandaVisualizar.status]}`}
+                      >
+                        {demandaVisualizar.status}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              </div>
+              <div>
+                <dt className="text-gray-500 font-medium">Prazo</dt>
+                <dd className="text-gray-800 mt-0.5">{demandaVisualizar.prazo}</dd>
+              </div>
+            </dl>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              {podeGestorOuResponsavel(usuario, demandaVisualizar) && (
+                <button
+                  type="button"
+                  disabled={excluindoId === demandaVisualizar.id}
+                  onClick={() => void handleExcluirDemanda(demandaVisualizar)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                >
+                  {excluindoId === demandaVisualizar.id
+                    ? "Excluindo…"
+                    : "Excluir demanda"}
+                </button>
+              )}
+              <Button type="button" onClick={() => setDemandaVisualizar(null)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {novaDemandaAberta && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 overflow-y-auto"
+          role="presentation"
+          onClick={(ev) => {
+            if (ev.target === ev.currentTarget && !enviandoDemanda) fecharModal();
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-lg my-auto"
+            role="dialog"
+            aria-modal="true"
             aria-labelledby="nova-demanda-titulo"
             onClick={(e) => e.stopPropagation()}
           >
@@ -252,110 +539,11 @@ export function DemandasPainel({
             >
               Nova Demanda
             </h2>
-            <form onSubmit={handleCriarDemanda} className="flex flex-col gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Título <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={formTitulo}
-                  onChange={(e) => {
-                    setFormTitulo(e.target.value);
-                    setErroTitulo(false);
-                  }}
-                  className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    erroTitulo ? "border-red-400" : "border-gray-300"
-                  }`}
-                  placeholder="Ex.: Revisar documento do cliente"
-                />
-                {erroTitulo && (
-                  <p className="text-red-500 text-xs mt-1">Informe o título.</p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Descrição (opcional)
-                </label>
-                <textarea
-                  value={formDescricao}
-                  onChange={(e) => setFormDescricao(e.target.value)}
-                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Atribuir a <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formResponsavel}
-                  onChange={(e) => {
-                    setFormResponsavel(e.target.value);
-                    setErroResponsavel(false);
-                  }}
-                  className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
-                    erroResponsavel ? "border-red-400" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Selecione o responsável</option>
-                  {RESPONSAVEIS_OPCOES.map((nome) => (
-                    <option key={nome} value={nome}>
-                      {nome}
-                    </option>
-                  ))}
-                </select>
-                {erroResponsavel && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Escolha quem vai executar a demanda.
-                  </p>
-                )}
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-600">
-                  Prioridade
-                </span>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {(["Baixa", "Média", "Alta"] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setFormPrioridade(p)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        formPrioridade === p
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Prazo <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={formPrazo}
-                  onChange={(e) => {
-                    setFormPrazo(e.target.value);
-                    setErroPrazo(false);
-                  }}
-                  className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
-                    erroPrazo ? "border-red-400" : "border-gray-300"
-                  }`}
-                />
-                {erroPrazo && (
-                  <p className="text-red-500 text-xs mt-1">Defina o prazo.</p>
-                )}
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={fecharModal}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Criar demanda</Button>
-              </div>
-            </form>
+            <NovaDemandaForm
+              onSubmit={handleCriarDemanda}
+              onCancel={fecharModal}
+              enviando={enviandoDemanda}
+            />
           </div>
         </div>
       )}

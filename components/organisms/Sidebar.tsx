@@ -7,7 +7,7 @@ import {
   Users,
   User,
 } from "lucide-react";
-import type { Usuario } from "@/components/types/usuario";
+import type { Usuario } from "@/types/usuario";
 import { NavLinkItem } from "@/components/molecules/NavLinkItem";
 
 const links = [
@@ -50,7 +50,9 @@ export function Sidebar({ usuario }: { usuario: Usuario }) {
         </div>
         <div className="overflow-hidden">
           <p className="text-gray-800 text-sm truncate">{usuario.nome}</p>
-          <p className="text-gray-400 text-xs">{usuario.role}</p>
+          <p className="text-gray-400 text-xs">
+            {usuario.role === "gestor" ? "Gestor" : "Funcionário"}
+          </p>
         </div>
       </div>
     </aside>

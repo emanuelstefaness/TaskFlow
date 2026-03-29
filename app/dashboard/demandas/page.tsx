@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DemandasPainel } from "@/components/organisms/DemandasPainel";
-import type { Usuario } from "@/components/types/usuario";
+import type { Usuario } from "@/types/usuario";
 import { useDemandas } from "@/context/DemandasContext";
-import { demandasDoUsuario } from "@/lib/demandas";
+import { demandasDoUsuario } from "@/lib/demandas-utils";
 
 export default function DemandasPage() {
   const { demandas } = useDemandas();
