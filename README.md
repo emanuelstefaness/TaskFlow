@@ -1,6 +1,6 @@
 # TaskFlow
 
-Painel de demandas. Front em Next.js, API em NestJS (`api/`).
+Painel de demandas. Front Next.js + API NestJS com JWT.
 
 ## Rodar tudo
 

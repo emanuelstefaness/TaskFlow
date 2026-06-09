@@ -4,24 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
-import { USUARIOS_COM_ACESSO } from "@/lib/usuarios-sistema";
+import { loginApi } from "@/lib/api/auth-api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const usuario = USUARIOS_COM_ACESSO.find(
-      (u) => u.email === email && u.senha === senha,
-    );
-    if (usuario) {
-      sessionStorage.setItem("usuario", JSON.stringify(usuario));
+    setErro("");
+    setCarregando(true);
+    try {
+      const dados = await loginApi(email, senha);
+      sessionStorage.setItem("token", dados.access_token);
+      sessionStorage.setItem("usuario", JSON.stringify(dados.usuario));
       router.push("/dashboard");
-    } else {
+    } catch {
       setErro("E-mail ou senha incorretos.");
+    } finally {
+      setCarregando(false);
     }
   }
 
@@ -48,7 +52,9 @@ export default function LoginPage() {
           {erro && (
             <p className="text-red-500 text-sm text-center">{erro}</p>
           )}
-          <Button type="submit">Entrar</Button>
+          <Button type="submit" disabled={carregando}>
+            {carregando ? "Entrando..." : "Entrar"}
+          </Button>
         </form>
       </div>
     </main>

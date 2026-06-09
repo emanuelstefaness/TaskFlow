@@ -3,13 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/atoms/Button";
-import { RESPONSAVEIS_OPCOES } from "@/lib/responsaveis";
 import {
   novaDemandaSchema,
   type NovaDemandaFormValues,
 } from "@/schemas/nova-demanda";
 
 type NovaDemandaFormProps = {
+  responsaveis: string[];
   onSubmit: (data: NovaDemandaFormValues) => Promise<void>;
   onCancel: () => void;
   enviando: boolean;
@@ -18,6 +18,7 @@ type NovaDemandaFormProps = {
 const prioridades = ["Baixa", "Média", "Alta"] as const;
 
 export function NovaDemandaForm({
+  responsaveis,
   onSubmit,
   onCancel,
   enviando,
@@ -38,13 +39,9 @@ export function NovaDemandaForm({
     },
   });
 
-  async function submeter(values: NovaDemandaFormValues) {
-    await onSubmit(values);
-  }
-
   return (
     <form
-      onSubmit={handleSubmit(submeter)}
+      onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-4"
       noValidate
     >
@@ -59,7 +56,6 @@ export function NovaDemandaForm({
           className={`mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.titulo ? "border-red-400" : "border-gray-300"
           }`}
-          placeholder="Ex.: Revisar documento do cliente"
         />
         {errors.titulo && (
           <p className="text-red-500 text-xs mt-1">{errors.titulo.message}</p>
@@ -68,7 +64,7 @@ export function NovaDemandaForm({
 
       <div>
         <label htmlFor="nova-demanda-desc" className="text-sm font-medium text-gray-600">
-          Descrição (opcional)
+          Descrição
         </label>
         <textarea
           id="nova-demanda-desc"
@@ -93,8 +89,8 @@ export function NovaDemandaForm({
             errors.responsavel ? "border-red-400" : "border-gray-300"
           }`}
         >
-          <option value="">Selecione o responsável</option>
-          {RESPONSAVEIS_OPCOES.map((nome) => (
+          <option value="">Selecione</option>
+          {responsaveis.map((nome) => (
             <option key={nome} value={nome}>
               {nome}
             </option>
@@ -131,9 +127,6 @@ export function NovaDemandaForm({
             </div>
           )}
         />
-        {errors.prioridade && (
-          <p className="text-red-500 text-xs mt-1">{errors.prioridade.message}</p>
-        )}
       </div>
 
       <div>

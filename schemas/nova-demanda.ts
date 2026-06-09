@@ -1,13 +1,10 @@
 import { z } from "zod";
-import { RESPONSAVEIS_OPCOES } from "@/lib/responsaveis";
 
 const hojeMeiaNoite = () => {
   const t = new Date();
   t.setHours(0, 0, 0, 0);
   return t;
 };
-
-const listaResp = RESPONSAVEIS_OPCOES as readonly string[];
 
 export const novaDemandaSchema = z.object({
   titulo: z
@@ -16,12 +13,7 @@ export const novaDemandaSchema = z.object({
     .min(3, "Título precisa ter pelo menos 3 caracteres")
     .max(120, "Título muito longo (máx. 120)"),
   descricao: z.string().max(500, "Descrição muito longa (máx. 500)"),
-  responsavel: z
-    .string()
-    .min(1, "Selecione quem vai executar")
-    .refine((v) => listaResp.includes(v), {
-      message: "Responsável inválido",
-    }),
+  responsavel: z.string().min(1, "Selecione quem vai executar"),
   prioridade: z.enum(["Baixa", "Média", "Alta"]),
   prazoISO: z
     .string()

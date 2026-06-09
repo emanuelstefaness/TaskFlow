@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/atoms/Button";
@@ -9,6 +9,7 @@ import type { Usuario } from "@/types/usuario";
 import { useDemandas } from "@/context/DemandasContext";
 import type { NovaDemandaFormValues } from "@/schemas/nova-demanda";
 import type { Demanda } from "@/types/demanda";
+import { listarFuncionarios } from "@/lib/api/usuarios-api";
 import { corPrioridade, corStatus } from "@/lib/demandas-utils";
 
 const STATUS_OPCOES: Demanda["status"][] = [
@@ -59,7 +60,15 @@ export function DemandasPainel({
     null,
   );
   const [salvandoStatus, setSalvandoStatus] = useState(false);
-  const [excluindoId, setExcluindoId] = useState<number | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const [responsaveis, setResponsaveis] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (usuario.role !== "gestor") return;
+    listarFuncionarios()
+      .then((lista) => setResponsaveis(lista.map((f) => f.nome)))
+      .catch(() => {});
+  }, [usuario.role]);
 
   function fecharModal() {
     setNovaDemandaAberta(false);
@@ -525,6 +534,7 @@ export function DemandasPainel({
               Nova Demanda
             </h2>
             <NovaDemandaForm
+              responsaveis={responsaveis}
               onSubmit={handleCriarDemanda}
               onCancel={fecharModal}
               enviando={enviandoDemanda}

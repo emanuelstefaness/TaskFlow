@@ -22,10 +22,10 @@ type DemandasContextValue = {
   carregando: boolean;
   adicionarDemanda: (input: NovaDemandaFormValues) => Promise<void>;
   atualizarStatusDemanda: (
-    id: number,
+    id: string,
     status: Demanda["status"],
   ) => Promise<Demanda>;
-  excluirDemanda: (id: number) => Promise<void>;
+  excluirDemanda: (id: string) => Promise<void>;
 };
 
 const DemandasContext = createContext<DemandasContextValue | null>(null);
@@ -50,7 +50,7 @@ export function DemandasProvider({ children }: { children: React.ReactNode }) {
   );
 
   const atualizarStatusDemanda = useCallback(
-    async (id: number, status: Demanda["status"]) => {
+    async (id: string, status: Demanda["status"]) => {
       const atualizada = await atualizarStatusDemandaApi(id, status);
       setDemandas((prev) =>
         prev.map((d) => (d.id === id ? atualizada : d)),
@@ -60,7 +60,7 @@ export function DemandasProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const excluirDemanda = useCallback(async (id: number) => {
+  const excluirDemanda = useCallback(async (id: string) => {
     await excluirDemandaApi(id);
     setDemandas((prev) => prev.filter((d) => d.id !== id));
   }, []);

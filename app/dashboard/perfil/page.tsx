@@ -17,6 +17,7 @@ export default function PerfilPage() {
 
   function handleLogout() {
     sessionStorage.removeItem("usuario");
+    sessionStorage.removeItem("token");
     router.push("/");
   }
 

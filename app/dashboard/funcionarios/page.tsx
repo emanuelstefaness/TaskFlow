@@ -1,11 +1,90 @@
-import { funcionariosComAcesso } from "@/lib/usuarios-sistema";
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/atoms/Button";
+import { Input } from "@/components/atoms/Input";
+import {
+  criarFuncionario,
+  listarFuncionarios,
+} from "@/lib/api/usuarios-api";
+import type { Usuario } from "@/types/usuario";
 
 export default function FuncionariosPage() {
-  const contas = funcionariosComAcesso();
+  const [contas, setContas] = useState<Usuario[]>([]);
+  const [erro, setErro] = useState("");
+  const [formAberto, setFormAberto] = useState(false);
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  function carregar() {
+    listarFuncionarios()
+      .then(setContas)
+      .catch(() => setErro("Não foi possível carregar."));
+  }
+
+  useEffect(() => {
+    carregar();
+  }, []);
+
+  async function handleCriar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      const novo = await criarFuncionario({ nome, email, senha });
+      setContas((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setNome("");
+      setEmail("");
+      setSenha("");
+      setFormAberto(false);
+      toast.success("Funcionário cadastrado.");
+    } catch {
+      toast.error("Não foi possível cadastrar. Verifique o e-mail.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Funcionários</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Funcionários</h1>
+        <Button type="button" onClick={() => setFormAberto((v) => !v)}>
+          {formAberto ? "Cancelar" : "+ Novo"}
+        </Button>
+      </div>
+
+      {erro && <p className="text-red-500 text-sm mb-4">{erro}</p>}
+
+      {formAberto && (
+        <form
+          onSubmit={handleCriar}
+          className="bg-white rounded-xl shadow p-6 mb-6 max-w-md flex flex-col gap-3"
+        >
+          <Input
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Nome"
+          />
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-mail"
+          />
+          <Input
+            type="password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            placeholder="Senha"
+          />
+          <Button type="submit" disabled={salvando}>
+            {salvando ? "Salvando…" : "Cadastrar"}
+          </Button>
+        </form>
+      )}
 
       <div className="bg-white rounded-xl shadow overflow-hidden max-w-3xl">
         <table className="w-full text-sm">
