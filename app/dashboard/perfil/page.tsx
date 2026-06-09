@@ -31,7 +31,7 @@ export default function PerfilPage() {
           <div>
             <p className="text-gray-800 text-lg font-semibold">{usuario.nome}</p>
             <p className="text-gray-400 text-sm">{usuario.email}</p>
-            <p className="text-gray-400 text-xs mt-0.5">{usuario.role === "gestor" ? "👑 Gestor" : "👤 Funcionário"}</p>
+            <p className="text-gray-400 text-xs mt-0.5 capitalize">{usuario.role}</p>
           </div>
         </div>
         <button onClick={handleLogout}

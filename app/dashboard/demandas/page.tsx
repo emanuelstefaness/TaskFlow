@@ -26,11 +26,11 @@ export default function DemandasPage() {
     <DemandasPainel
       usuario={usuario}
       demandas={minhasDemandas}
-      titulo="Demandas atribuídas a mim"
-      subtitulo="Somente o que está sob sua responsabilidade."
-      tituloTabela="Minhas demandas"
-      rodape={{ href: "/dashboard", label: "Ver todas as demandas" }}
-      mensagemVazia="Nenhuma demanda atribuída a você."
+      titulo="Minhas demandas"
+      subtitulo=""
+      tituloTabela="Atribuídas a mim"
+      rodape={{ href: "/dashboard", label: "Ver todas" }}
+      mensagemVazia="Nenhuma demanda sua."
     />
   );
 }

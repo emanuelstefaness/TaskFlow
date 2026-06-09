@@ -24,7 +24,6 @@ function prioridadeDeValor(bruto: unknown): Demanda["prioridade"] {
   return "Média";
 }
 
-/** Corrige registros antigos ou incompletos vindos do localStorage. */
 export function normalizarListaDemandas(bruto: unknown[]): Demanda[] {
   const out: Demanda[] = [];
   for (const item of bruto) {

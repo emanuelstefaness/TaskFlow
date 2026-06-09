@@ -17,7 +17,6 @@ const STATUS_OPCOES: Demanda["status"][] = [
   "Concluída",
 ];
 
-/** Gestor: qualquer demanda. Funcionário: só a que está com o nome dele. */
 function podeGestorOuResponsavel(usuario: Usuario, d: Demanda): boolean {
   if (usuario.role === "gestor") return true;
   return (
@@ -73,7 +72,7 @@ export function DemandasPainel({
   async function handleExcluirDemanda(d: Demanda) {
     if (
       !window.confirm(
-        `Excluir a demanda "${d.titulo}"? Não dá para desfazer.`,
+        `Excluir "${d.titulo}"?`,
       )
     ) {
       return;
@@ -94,7 +93,7 @@ export function DemandasPainel({
     setEnviandoDemanda(true);
     try {
       await adicionarDemanda(data);
-      toast.success("Demanda criada e salva.");
+      toast.success("Demanda criada.");
       fecharModal();
     } catch {
       toast.error("Não foi possível criar a demanda. Tente de novo.");
@@ -188,9 +187,6 @@ export function DemandasPainel({
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-gray-800">{tituloTabela}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Pendente e em andamento (concluídas ficam abaixo)
-            </p>
           </div>
           <button
             type="button"
@@ -231,9 +227,7 @@ export function DemandasPainel({
                     colSpan={6}
                     className="px-6 py-8 text-center text-sm text-gray-500"
                   >
-                    {statusFiltro === "Concluída"
-                      ? "Nenhuma em aberto — use o filtro ou veja a seção Concluídas abaixo."
-                      : "Nenhuma demanda em aberto com este filtro. Concluídas estão na seção abaixo."}
+                    Nenhuma em aberto.
                   </td>
                 </tr>
               ) : (
@@ -307,10 +301,6 @@ export function DemandasPainel({
       <div className="bg-white rounded-xl shadow mt-6">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800">Concluídas</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Demandas finalizadas saem da lista acima e ficam aqui. O responsável
-            (ou o gestor) pode reabrir mudando o status em Ver.
-          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
@@ -476,11 +466,6 @@ export function DemandasPainel({
                             </option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Você pode mudar o status a qualquer momento, inclusive
-                          depois de concluir (para reabrir, escolha Pendente ou
-                          Em andamento).
-                        </p>
                       </div>
                     ) : (
                       <span

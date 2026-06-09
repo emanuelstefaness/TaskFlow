@@ -35,20 +35,10 @@ export function DemandasProvider({ children }: { children: React.ReactNode }) {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    let ativo = true;
     listarDemandas()
-      .then((lista) => {
-        if (ativo) setDemandas(lista);
-      })
-      .catch(() => {
-        toast.error("Não foi possível carregar as demandas.");
-      })
-      .finally(() => {
-        if (ativo) setCarregando(false);
-      });
-    return () => {
-      ativo = false;
-    };
+      .then(setDemandas)
+      .catch(() => toast.error("Erro ao carregar demandas."))
+      .finally(() => setCarregando(false));
   }, []);
 
   const adicionarDemanda = useCallback(
@@ -93,7 +83,7 @@ export function DemandasProvider({ children }: { children: React.ReactNode }) {
 export function useDemandas() {
   const ctx = useContext(DemandasContext);
   if (!ctx) {
-    throw new Error("useDemandas deve ser usado dentro de DemandasProvider");
+    throw new Error("fora do DemandasProvider");
   }
   return ctx;
 }

@@ -1,30 +1,21 @@
-# TaskFlow
+# API TaskFlow
 
-Painel de demandas. Front em Next.js, API em NestJS (`api/`).
-
-## Front
+NestJS + Prisma. DER em `../docs/DER.md`.
 
 ```bash
-npm install
-npm run dev
-```
-
-http://localhost:3000
-
-## API
-
-```bash
-cd api
 npm install
 npx prisma migrate dev
+npm run prisma:seed
 npm run start:dev
 ```
 
 http://localhost:3001
 
-## Login
+Ver banco: `npm run prisma:studio`
 
 | | E-mail | Senha |
 |---|--------|-------|
 | Gestor | gestor@taskflow.com | 123 |
 | Funcionário | manu@taskflow.com | 123 |
+
+Rotas: `/auth/login`, `/usuarios/funcionarios`, `/demandas`

@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GESTOR
+  FUNCIONARIO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+enum StatusDemanda {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+model Usuario {
+  id         String   @id @default(uuid())
+  nome       String
+  email      String   @unique
+  senhaHash  String   @map("senha_hash")
+  role       Role
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  demandasCriadas     Demanda[] @relation("DemandaCriador")
+  demandasResponsavel Demanda[] @relation("DemandaResponsavel")
+
+  @@map("usuarios")
+}
+
+model Demanda {
+  id            String        @id @default(uuid())
+  titulo        String
+  descricao     String?
+  prioridade    Prioridade    @default(MEDIA)
+  status        StatusDemanda @default(PENDENTE)
+  prazo         DateTime
+  responsavelId String        @map("responsavel_id")
+  criadoPorId   String        @map("criado_por_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  responsavel Usuario @relation("DemandaResponsavel", fields: [responsavelId], references: [id])
+  criadoPor   Usuario @relation("DemandaCriador", fields: [criadoPorId], references: [id])
+
+  @@index([responsavelId])
+  @@index([status])
+  @@index([prazo])
+  @@map("demandas")
+}

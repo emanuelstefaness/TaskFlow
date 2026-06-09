@@ -5,14 +5,7 @@ export default function FuncionariosPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Funcionários</h1>
-      <p className="text-gray-400 mb-6">
-        Quem da equipe tem conta para entrar no TaskFlow (cadastro em{" "}
-        <code className="text-gray-500 bg-gray-100 px-1 rounded text-xs">
-          lib/usuarios-sistema.ts
-        </code>
-        ).
-      </p>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Funcionários</h1>
 
       <div className="bg-white rounded-xl shadow overflow-hidden max-w-3xl">
         <table className="w-full text-sm">
@@ -29,7 +22,7 @@ export default function FuncionariosPage() {
                   colSpan={2}
                   className="px-6 py-8 text-center text-gray-500"
                 >
-                  Nenhum funcionário com acesso cadastrado.
+                  Nenhum funcionário cadastrado.
                 </td>
               </tr>
             ) : (

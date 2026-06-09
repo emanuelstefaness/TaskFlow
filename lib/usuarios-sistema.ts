@@ -1,6 +1,5 @@
 import type { Usuario } from "@/types/usuario";
 
-/** Única fonte da verdade: quem pode entrar no sistema (login usa esta lista). */
 export const USUARIOS_COM_ACESSO: Usuario[] = [
   {
     id: 1,
@@ -18,16 +17,8 @@ export const USUARIOS_COM_ACESSO: Usuario[] = [
   },
 ];
 
-export type ContaSemSenha = Omit<Usuario, "senha">;
-
-function semSenha(u: Usuario): ContaSemSenha {
-  const { senha: _s, ...rest } = u;
-  return rest;
-}
-
-/** Funcionários com login no sistema (exclui gestor). */
-export function funcionariosComAcesso(): ContaSemSenha[] {
+export function funcionariosComAcesso() {
   return USUARIOS_COM_ACESSO.filter((u) => u.role === "funcionario").map(
-    semSenha,
+    ({ senha: _, ...rest }) => rest,
   );
 }
