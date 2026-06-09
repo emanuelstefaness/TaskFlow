@@ -2,6 +2,10 @@
 
 Painel de demandas. Front em Next.js, API em NestJS (`api/`).
 
+## Rodar tudo
+
+Clique duas vezes em **`rodar.bat`** (sobe API + front e abre o navegador).
+
 ## Front
 
 ```bash
